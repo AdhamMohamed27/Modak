@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask with HTML and CSS</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body>
+    <div class="container">
+        <div class="nav">
+            <div class="logo">Modak</div>
+            <div class="nav-links">
+                <ul>
+                    <li><a href="#">Home</a></li>
+                    <li><a href="#">My Feed</a></li>
+                </ul>
+            </div>
+            <div class="profile-section">
+                <span class="profile-link">My Profile</span>
+                <img src="{{ url_for('static', filename='assets/Profile.svg') }}" alt="Profile Icon">
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main">
+            <h1 class="greeting">Hello, {{ username }}! How are you feeling?</h1>
+            <p class="choose-input">Choose your input:</p>
+
+            <div class="input-section">
+                <p class="feeling-list-text">Either talk into the Microphone</p>
+                <a class="microphone button"><img src="{{ url_for('static', filename='assets/Microphone.svg') }}" alt="Microphone Icon"></a>
+                <p class="feeling-list-text">Or look into the camera</p>
+                <a id="cameraButton" class="Camera button"><img src="{{ url_for('static', filename='../static/assets/Camera.svg') }}" alt="Camera icon"></a>
+            </div>
+        </div>
+
+        <!-- Video element to show the camera feed -->
+        <video id="video" width="640" height="480" autoplay></video>
+
+
+    </div>
+
+    <script>
+        const cameraButton = document.getElementById('cameraButton');
+        const video = document.getElementById('video');
+
+        cameraButton.addEventListener('click', async () => {
+            try {
+                // Request access to the user's camera
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream; // Set the video source to the camera stream
+            } catch (err) {
+                console.error("Error accessing the camera: ", err);
+            }
+        });
+    </script>
+</body>
+
+</html>
