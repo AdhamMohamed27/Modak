@@ -1,17 +1,17 @@
-// Registration.js
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, View, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons'; // For icons
+import { supabase } from './supabaseClient';
 
 const Registration = ({ navigation }) => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState(''); // New state for confirm password
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [email, setEmail] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    const [errors, setErrors] = useState({}); // State for error tracking
+    const [errors, setErrors] = useState({});
 
-    const handleSignUp = () => {
+    const handleSignUp = async () => {
         const newErrors = {};
 
         // Validation checks
@@ -28,9 +28,50 @@ const Registration = ({ navigation }) => {
             return; // Prevent form submission
         }
 
-        // Clear errors and show success
-        setErrors({});
-        // Logic to send data to your backend could go here
+        try {
+            // Check if the username already exists in the database
+            const { data: usernameCheck, error: usernameError } = await supabase
+                .from('users')
+                .select('id')
+                .eq('username', username)
+                .single();
+
+            if (usernameCheck) {
+                newErrors.username = 'Username is already taken';
+            }
+
+            // Check if the email already exists in the database
+            const { data: emailCheck, error: emailError } = await supabase
+                .from('users')
+                .select('id')
+                .eq('email', email)
+                .single();
+
+            if (emailCheck) {
+                newErrors.email = 'Email is already taken';
+            }
+
+            // If there are any errors, set them and prevent sign-up
+            if (newErrors.username || newErrors.email) {
+                setErrors(newErrors);
+                return;
+            }
+
+            // If no errors, insert the new user into the database
+            const { error } = await supabase
+                .from('users')
+                .insert([{ username, email, password }]);
+
+            if (error) {
+                setErrors({ registration: error.message });
+            } else {
+                setErrors({});
+                navigation.navigate('Login');
+            }
+        } catch (error) {
+            console.error("Registration error: ", error);
+            setErrors({ registration: 'An error occurred. Please try again.' });
+        }
     };
 
     return (
@@ -46,7 +87,7 @@ const Registration = ({ navigation }) => {
                     style={styles.input}
                     placeholder="Username"
                     value={username}
-                    onChangeText={(text) => { setUsername(text); setErrors({...errors, username: null}); }}
+                    onChangeText={(text) => { setUsername(text); setErrors({ ...errors, username: null }); }}
                     placeholderTextColor="#B0B0B0"
                 />
             </View>
@@ -58,8 +99,9 @@ const Registration = ({ navigation }) => {
                     style={styles.input}
                     placeholder="Email"
                     value={email}
-                    onChangeText={(text) => { setEmail(text); setErrors({...errors, email: null}); }}
+                    onChangeText={(text) => { setEmail(text); setErrors({ ...errors, email: null }); }}
                     placeholderTextColor="#B0B0B0"
+                    keyboardType="email-address"
                 />
             </View>
             {errors.email && <Text style={styles.errorMessage}>{errors.email}</Text>}
@@ -70,7 +112,7 @@ const Registration = ({ navigation }) => {
                     style={styles.input}
                     placeholder="Password"
                     value={password}
-                    onChangeText={(text) => { setPassword(text); setErrors({...errors, password: null}); }}
+                    onChangeText={(text) => { setPassword(text); setErrors({ ...errors, password: null }); }}
                     secureTextEntry={!showPassword}
                     placeholderTextColor="#B0B0B0"
                 />
@@ -83,12 +125,13 @@ const Registration = ({ navigation }) => {
                     style={styles.input}
                     placeholder="Confirm Password"
                     value={confirmPassword}
-                    onChangeText={(text) => { setConfirmPassword(text); setErrors({...errors, confirmPassword: null}); }}
+                    onChangeText={(text) => { setConfirmPassword(text); setErrors({ ...errors, confirmPassword: null }); }}
                     secureTextEntry={!showPassword}
                     placeholderTextColor="#B0B0B0"
                 />
             </View>
             {errors.confirmPassword && <Text style={styles.errorMessage}>{errors.confirmPassword}</Text>}
+            {errors.registration && <Text style={styles.errorMessage}>{errors.registration}</Text>}
 
             <TouchableOpacity style={styles.button} onPress={handleSignUp}>
                 <Text style={styles.buttonText}>Sign Up</Text>

@@ -1,7 +1,7 @@
-// Login.js
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, View, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons'; // For icons
+import { supabase } from './supabaseClient';
 
 const Login = ({ navigation }) => {
     const [username, setUsername] = useState('');
@@ -9,7 +9,7 @@ const Login = ({ navigation }) => {
     const [showPassword, setShowPassword] = useState(false);
     const [errors, setErrors] = useState({}); // State for error tracking
 
-    const handleLogin = () => {
+    const handleLogin = async () => {
         const newErrors = {};
 
         // Validation checks
@@ -21,10 +21,23 @@ const Login = ({ navigation }) => {
             return; // Prevent form submission
         }
 
-        // Clear errors and navigate to Home
-        setErrors({});
-        navigation.navigate('Home'); // Navigate to Home screen
-        // Logic to send data to your backend could go here
+        try {
+            const { data, error } = await supabase
+                .from('users')
+                .select('id, username, password')
+                .eq('username', username)
+                .single();
+
+            if (error || !data || data.password !== password) {
+                setErrors({ login: 'Invalid username or password' });
+            } else {
+                setErrors({});
+                navigation.navigate('Home');
+            }
+        } catch (error) {
+            console.error("Login error: ", error);
+            setErrors({ login: 'An error occurred. Please try again.' });
+        }
     };
 
     return (
@@ -40,7 +53,7 @@ const Login = ({ navigation }) => {
                     style={styles.input}
                     placeholder="Username"
                     value={username}
-                    onChangeText={(text) => { setUsername(text); setErrors({...errors, username: null}); }}
+                    onChangeText={(text) => { setUsername(text); setErrors({ ...errors, username: null }); }}
                     placeholderTextColor="#B0B0B0"
                 />
             </View>
@@ -52,7 +65,7 @@ const Login = ({ navigation }) => {
                     style={styles.input}
                     placeholder="Password"
                     value={password}
-                    onChangeText={(text) => { setPassword(text); setErrors({...errors, password: null}); }}
+                    onChangeText={(text) => { setPassword(text); setErrors({ ...errors, password: null }); }}
                     secureTextEntry={!showPassword}
                     placeholderTextColor="#B0B0B0"
                 />
@@ -65,8 +78,8 @@ const Login = ({ navigation }) => {
                 </TouchableOpacity>
             </View>
             {errors.password && <Text style={styles.errorMessage}>{errors.password}</Text>}
+            {errors.login && <Text style={styles.errorMessage}>{errors.login}</Text>}
 
-            {/* Forgot Password Button positioned on the right under the password box */}
             <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotPasswordContainer}>
                 <Text style={styles.forgotPassword}>Forgot Password?</Text>
             </TouchableOpacity>
