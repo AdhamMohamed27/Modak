@@ -17,8 +17,21 @@ const Registration = ({ navigation }) => {
         // Validation checks
         if (username === '') newErrors.username = 'Username is required';
         if (email === '') newErrors.email = 'Email is required';
+
+        // Check if the email is in the correct format
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (email && !emailRegex.test(email)) {
+            newErrors.email = 'Please enter a valid email address';
+        }
+
         if (password === '') newErrors.password = 'Password is required';
         if (confirmPassword === '') newErrors.confirmPassword = 'Confirmation is required';
+
+        // Check if the password is at least 8 characters long
+        if (password && password.length < 8) {
+            newErrors.password = 'Password must be at least 8 characters long';
+        }
+
         if (password && confirmPassword && password !== confirmPassword) {
             newErrors.confirmPassword = 'Passwords do not match';
         }
@@ -77,12 +90,12 @@ const Registration = ({ navigation }) => {
     return (
         <View style={styles.container}>
             <Image
-                source={{ uri: 'https://example.com/your-registration-image.png' }} // Replace with your image
+                source={require('./Logo.png')}
                 style={styles.logo}
             />
             <Text style={styles.title}>Sign Up for Modak</Text>
             <View style={[styles.inputContainer, errors.username && styles.errorInput]}>
-                <Ionicons name="person-outline" size={24} color="#FF5733" />
+                <Ionicons name="person-outline" size={24} color="#008B8B" />
                 <TextInput
                     style={styles.input}
                     placeholder="Username"
@@ -94,7 +107,7 @@ const Registration = ({ navigation }) => {
             {errors.username && <Text style={styles.errorMessage}>{errors.username}</Text>}
 
             <View style={[styles.inputContainer, errors.email && styles.errorInput]}>
-                <Ionicons name="mail-outline" size={24} color="#FF5733" />
+                <Ionicons name="mail-outline" size={24} color="#008B8B" />
                 <TextInput
                     style={styles.input}
                     placeholder="Email"
@@ -107,7 +120,7 @@ const Registration = ({ navigation }) => {
             {errors.email && <Text style={styles.errorMessage}>{errors.email}</Text>}
 
             <View style={[styles.inputContainer, errors.password && styles.errorInput]}>
-                <Ionicons name="lock-closed-outline" size={24} color="#FF5733" />
+                <Ionicons name="lock-closed-outline" size={24} color="#008B8B" />
                 <TextInput
                     style={styles.input}
                     placeholder="Password"
@@ -120,7 +133,7 @@ const Registration = ({ navigation }) => {
             {errors.password && <Text style={styles.errorMessage}>{errors.password}</Text>}
 
             <View style={[styles.inputContainer, errors.confirmPassword && styles.errorInput]}>
-                <Ionicons name="lock-closed-outline" size={24} color="#FF5733" />
+                <Ionicons name="lock-closed-outline" size={24} color="#008B8B" />
                 <TextInput
                     style={styles.input}
                     placeholder="Confirm Password"
@@ -137,7 +150,9 @@ const Registration = ({ navigation }) => {
                 <Text style={styles.buttonText}>Sign Up</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                <Text style={styles.footer}>Already have an account? Login</Text>
+                <Text style={styles.footer}>
+                    Already have an account? <Text style={styles.footerLink}>Login</Text>
+                </Text>
             </TouchableOpacity>
         </View>
     );
@@ -149,16 +164,16 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
-        backgroundColor: '#F5F5F5',
+        backgroundColor: '#1C1C1C',
     },
     logo: {
-        width: 100,
-        height: 100,
+        width: 150, // Adjust logo size
+        height: 150, // Adjust logo size
         marginBottom: 20,
     },
     title: {
         fontSize: 28,
-        color: '#333333',
+        color: '#008B8B',
         marginBottom: 20,
         textAlign: 'center',
         fontWeight: 'bold',
@@ -166,21 +181,16 @@ const styles = StyleSheet.create({
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        borderColor: '#FF5733',
+        borderColor: '#008B8B',
         borderWidth: 1,
         borderRadius: 10,
-        marginBottom: 5, // Adjust margin to keep error message close to input
+        marginBottom: 5,
         paddingHorizontal: 10,
         width: '100%',
         backgroundColor: '#FFFFFF',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 2,
-        elevation: 2,
     },
     errorInput: {
-        borderColor: 'red', // Red border for error highlight
+        borderColor: 'red',
     },
     input: {
         height: 50,
@@ -189,9 +199,9 @@ const styles = StyleSheet.create({
         paddingLeft: 10,
     },
     button: {
-        backgroundColor: '#FF5733',
-        paddingVertical: 15,
-        paddingHorizontal: 30,
+        backgroundColor: '#008B8B',
+        paddingVertical: 20,
+        paddingHorizontal: 40,
         borderRadius: 25,
         marginVertical: 10,
         elevation: 3,
@@ -203,14 +213,17 @@ const styles = StyleSheet.create({
     },
     footer: {
         marginTop: 20,
-        color: '#007BFF',
+        color: '#FFFFFF',
         textAlign: 'center',
-        textDecorationLine: 'underline',
         fontWeight: '600',
+    },
+    footerLink: {
+        color: '#008B8B',
+        fontWeight: 'bold',
     },
     errorMessage: {
         color: 'red',
-        marginBottom: 10, // Space between error message and next element
+        marginBottom: 10,
         fontSize: 14,
         fontWeight: '500',
     },

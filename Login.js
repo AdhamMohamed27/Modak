@@ -7,7 +7,7 @@ const Login = ({ navigation }) => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    const [errors, setErrors] = useState({}); // State for error tracking
+    const [errors, setErrors] = useState({});
 
     const handleLogin = async () => {
         const newErrors = {};
@@ -43,12 +43,12 @@ const Login = ({ navigation }) => {
     return (
         <View style={styles.container}>
             <Image
-                source={{ uri: 'https://example.com/your-image.png' }} // Replace with your image URL
+                source={require('./Logo.png')}
                 style={styles.logo}
             />
-            <Text style={styles.title}>Welcome to Modak</Text>
+            <Text style={styles.title}>Log in to your account</Text>
             <View style={[styles.inputContainer, errors.username && styles.errorInput]}>
-                <Ionicons name="person-outline" size={24} color="#FF5733" />
+                <Ionicons name="person-outline" size={24} color="#008B8B" />
                 <TextInput
                     style={styles.input}
                     placeholder="Username"
@@ -60,7 +60,7 @@ const Login = ({ navigation }) => {
             {errors.username && <Text style={styles.errorMessage}>{errors.username}</Text>}
 
             <View style={[styles.inputContainer, errors.password && styles.errorInput]}>
-                <Ionicons name="lock-closed-outline" size={24} color="#FF5733" />
+                <Ionicons name="lock-closed-outline" size={24} color="#008B8B" />
                 <TextInput
                     style={styles.input}
                     placeholder="Password"
@@ -73,7 +73,7 @@ const Login = ({ navigation }) => {
                     <Ionicons
                         name={showPassword ? "eye-off-outline" : "eye-outline"}
                         size={24}
-                        color="#FF5733"
+                        color="#008B8B"
                     />
                 </TouchableOpacity>
             </View>
@@ -88,7 +88,9 @@ const Login = ({ navigation }) => {
                 <Text style={styles.buttonText}>Login</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => navigation.navigate('Registration')}>
-                <Text style={styles.footer}>Don't have an account? Sign Up</Text>
+                <Text style={styles.footer}>
+                    Don't have an account? <Text style={styles.footerLink}>Sign Up</Text>
+                </Text>
             </TouchableOpacity>
         </View>
     );
@@ -100,16 +102,16 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
-        backgroundColor: '#F5F5F5',
+        backgroundColor: '#1C1C1C',
     },
     logo: {
-        width: 100,
-        height: 100,
+        width: 150, // Adjust logo size
+        height: 150, // Adjust logo size
         marginBottom: 20,
     },
     title: {
         fontSize: 28,
-        color: '#333333',
+        color: '#008B8B',
         marginBottom: 20,
         textAlign: 'center',
         fontWeight: 'bold',
@@ -117,21 +119,16 @@ const styles = StyleSheet.create({
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        borderColor: '#FF5733',
+        borderColor: '#008B8B',
         borderWidth: 1,
         borderRadius: 10,
-        marginBottom: 5, // Adjust margin to keep error message close to input
+        marginBottom: 5,
         paddingHorizontal: 10,
         width: '100%',
         backgroundColor: '#FFFFFF',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 2,
-        elevation: 2,
     },
     errorInput: {
-        borderColor: 'red', // Red border for error highlight
+        borderColor: 'red',
     },
     input: {
         height: 50,
@@ -140,9 +137,9 @@ const styles = StyleSheet.create({
         paddingLeft: 10,
     },
     button: {
-        backgroundColor: '#FF5733',
-        paddingVertical: 15,
-        paddingHorizontal: 30,
+        backgroundColor: '#008B8B',
+        paddingVertical: 20,
+        paddingHorizontal: 40,
         borderRadius: 25,
         marginVertical: 10,
         elevation: 3,
@@ -154,23 +151,26 @@ const styles = StyleSheet.create({
     },
     footer: {
         marginTop: 20,
-        color: '#007BFF',
+        color: '#FFFFFF',
         textAlign: 'center',
-        textDecorationLine: 'underline',
         fontWeight: '600',
     },
+    footerLink: {
+        color: '#008B8B',
+        fontWeight: 'bold',
+    },
     forgotPasswordContainer: {
-        alignSelf: 'flex-end', // Align the button to the right
-        marginBottom: 10, // Space between the button and next element
+        alignSelf: 'flex-end',
+        marginBottom: 10,
     },
     forgotPassword: {
-        color: '#007BFF', // Link color
-        textDecorationLine: 'underline', // Underline text for clickable action
+        color: '#008B8B',
+        textDecorationLine: 'underline',
         fontWeight: '600',
     },
     errorMessage: {
         color: 'red',
-        marginBottom: 10, // Space between error message and next element
+        marginBottom: 10,
         fontSize: 14,
         fontWeight: '500',
     },
