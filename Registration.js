@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, View, TouchableOpacity, Image } from 'react-native';
+import { StyleSheet, Text, TextInput, View, TouchableOpacity, Image, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons'; // For icons
 import { supabase } from './supabaseClient';
 
@@ -77,13 +77,24 @@ const Registration = ({ navigation }) => {
 
             if (error) {
                 setErrors({ registration: error.message });
+                Alert.alert('Error', 'An error occurred during registration. Please try again.');
             } else {
                 setErrors({});
-                navigation.navigate('Login');
+                Alert.alert(
+                    'Success',
+                    'Registration successful! You can now log in.',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => navigation.navigate('Login'),
+                        },
+                    ]
+                );
             }
         } catch (error) {
             console.error("Registration error: ", error);
             setErrors({ registration: 'An error occurred. Please try again.' });
+            Alert.alert('Error', 'An unexpected error occurred. Please try again later.');
         }
     };
 
