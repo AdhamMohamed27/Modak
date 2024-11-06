@@ -1,0 +1,70 @@
+<h1>Welcome, {{ user_name }}!</h1>
+{% if user_profile_image %}
+<img src="{{ user_profile_image }}" alt="Profile Image" width="100">
+{% endif %}
+<p>Country: {{ user_country }}</p>
+<p>Followers: {{ user_followers }}</p>
+
+<h2>Your Recently Played Tracks:</h2>
+<ul>
+    {% for track in recent_tracks %}
+    <li>
+        <strong>{{ track.name }}</strong> by {{ track.artist }} <br>
+        Album: {{ track.album }} <br>
+        Played at: {{ track.played_at }} <br>
+        <img src="{{ track.cover_url }}" alt="Album cover" width="100" height="100">
+    </li>
+    <hr>
+    {% endfor %}
+</ul>
+
+<h2>Your Top Tracks:</h2>
+<ul>
+    {% for track in top_tracks %}
+    <li>
+        <strong>{{ track.name }}</strong> by {{ track.artist }} <br>
+        Album: {{ track.album }} <br>
+        <img src="{{ track.cover_url }}" alt="Album cover" width="100" height="100">
+    </li>
+    <hr>
+    {% endfor %}
+</ul>
+
+<h2>Your Top Artists:</h2>
+<ul>
+    {% for artist in top_artists %}
+    <li>
+        <strong>{{ artist.name }}</strong> <br>
+        Genres: {{ artist.genres }} <br>
+        Followers: {{ artist.followers }} <br>
+        <img src="{{ artist.image_url }}" alt="Artist image" width="100" height="100">
+    </li>
+    <hr>
+    {% endfor %}
+</ul>
+
+<h2>Your Saved Tracks:</h2>
+<ul>
+    {% for track in saved_tracks %}
+    <li>
+        <strong>{{ track.name }}</strong> by {{ track.artist }} <br>
+        Album: {{ track.album }} <br>
+        <img src="{{ track.cover_url }}" alt="Album cover" width="100" height="100">
+    </li>
+    <hr>
+    {% endfor %}
+</ul>
+
+<h2>Your Saved Albums:</h2>
+<ul>
+    {% for album in saved_albums %}
+    <li>
+        <strong>{{ album.name }}</strong> by {{ album.artist }} <br>
+        <img src="{{ album.cover_url }}" alt="Album cover" width="100" height="100">
+    </li>
+    <hr>
+    {% endfor %}
+    <a href="{{ url_for('logout') }}">Logout</a>
+
+
+</ul>
