@@ -1,4 +1,5 @@
 import cv2
+import time
 from deepface import DeepFace
 
 # Load face cascade classifier
@@ -7,39 +8,65 @@ face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fronta
 # Start capturing video
 cap = cv2.VideoCapture(0)
 
-while True:
-    # Capture frame-by-frame
-    ret, frame = cap.read()
+if not cap.isOpened():
+    print("Error: Camera could not be opened.")
+else:
+    print("Camera opened successfully. Displaying live feed...")
 
-    # Convert frame to grayscale
-    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    # Start time
+    start_time = time.time()
 
-    # Convert grayscale frame to RGB format
-    rgb_frame = cv2.cvtColor(gray_frame, cv2.COLOR_GRAY2RGB)
+    captured_frame = None
+    while True:
+        # Read a frame from the live feed
+        ret, frame = cap.read()
 
-    # Detect faces in the frame
-    faces = face_cascade.detectMultiScale(gray_frame, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+        if not ret:
+            print("Failed to capture frame.")
+            break
 
-    for (x, y, w, h) in faces:
-        # Extract the face ROI (Region of Interest)
-        face_roi = rgb_frame[y:y + h, x:x + w]
+        # Display the live feed
+        cv2.imshow('Live Feed', frame)
 
-        # Perform emotion analysis on the face ROI
-        result = DeepFace.analyze(face_roi, actions=['emotion'], enforce_detection=False)
+        # Check if the delay time has passed (2 seconds in this case)
+        if time.time() - start_time >= 2:
+            captured_frame = frame  # Save the current frame
+            break
 
-        # Determine the dominant emotion
-        emotion = result[0]['dominant_emotion']
+        # Exit if the user presses 'q'
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
-        # Draw rectangle around face and label with predicted emotion
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
-        cv2.putText(frame, emotion, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
+    # Process the captured frame
+    if captured_frame is not None:
+        gray_frame = cv2.cvtColor(captured_frame, cv2.COLOR_BGR2GRAY)
+        rgb_frame = cv2.cvtColor(gray_frame, cv2.COLOR_GRAY2RGB)
 
-    # Display the resulting frame
-    cv2.imshow('Real-time Emotion Detection', frame)
+        # Detect faces in the frame
+        faces = face_cascade.detectMultiScale(gray_frame, scaleFactor=1.1, minNeighbors=5, minSize=(100, 100))
 
-    # Press 'q' to exit
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+        if len(faces) > 0:
+            # Sort faces by size (area) and select the largest one
+            largest_face = max(faces, key=lambda rect: rect[2] * rect[3])  # Sort by width * height
+            x, y, w, h = largest_face
+
+            # Extract the face ROI (Region of Interest)
+            face_roi = rgb_frame[y:y + h, x:x + w]
+
+            # Perform emotion analysis on the face ROI
+            result = DeepFace.analyze(face_roi, actions=['emotion'], enforce_detection=False)
+
+            # Determine the dominant emotion
+            emotion = result[0]['dominant_emotion']
+            print(f"Detected emotion: {emotion}")
+
+            # Draw rectangle around the largest face and label with predicted emotion
+            cv2.rectangle(captured_frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+            cv2.putText(captured_frame, emotion, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
+
+        # Display the processed frame
+        cv2.imshow('Emotion Detection', captured_frame)
+        cv2.waitKey(0)
 
 # Release the capture and close all windows
 cap.release()
