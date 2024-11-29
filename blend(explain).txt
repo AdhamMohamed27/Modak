@@ -1,0 +1,10 @@
+
+A Python script that authenticates users and stores them in a database using their Spotify ID as index, 
+Retrieves a user's top artists, genres, and songs.
+ Attempts to create a playlist recommendation based on two users' data.
+
+
+
+Issue:
+The API only returns data when using the original access token. Changing access tokens leads to empty responses.
+
