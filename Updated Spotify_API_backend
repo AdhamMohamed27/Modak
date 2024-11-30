@@ -1,0 +1,555 @@
+from flask import Flask, redirect, url_for, session, request, render_template
+import os
+import requests
+from dotenv import load_dotenv
+import base64
+from datetime import datetime
+import cv2
+import time
+from deepface import DeepFace
+import random
+import logging
+import requests
+from flask import session, jsonify, redirect, url_for, request
+
+
+
+
+# Load environment variables
+load_dotenv()
+
+# Initialize Flask app and secret key
+app = Flask(__name__)
+app.secret_key = os.urandom(24)
+
+CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
+REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI")
+CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
+
+# Route to home, which redirects to the login
+@app.route('/')
+def home():
+    return redirect(url_for('login'))
+
+# Route to handle login and redirect to Spotify's authorization
+@app.route('/login')
+def login():
+    scope = "user-read-private user-read-email user-top-read user-read-recently-played user-library-read playlist-modify-public playlist-modify-private"
+    auth_url = (
+        f"https://accounts.spotify.com/authorize"
+        f"?response_type=code&client_id={CLIENT_ID}"
+        f"&redirect_uri={REDIRECT_URI}"
+        f"&scope={scope}"
+    )
+    return redirect(auth_url)
+
+# Callback route to handle the Spotify authorization code and fetch tokens
+@app.route('/callback')
+def callback():
+    code = request.args.get("code")
+    token_url = "https://accounts.spotify.com/api/token"
+    
+    # Base64-encoded authorization header with Client ID and Client Secret
+    auth_header = base64.b64encode(f"{CLIENT_ID}:{CLIENT_SECRET}".encode()).decode()
+    
+    headers = {
+        "Authorization": f"Basic {auth_header}",
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+    data = {
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": REDIRECT_URI
+    }
+    
+    # Send POST request to get the access token and refresh token
+    response = requests.post(token_url, headers=headers, data=data)
+    response_data = response.json()
+    
+    # Store access and refresh tokens in session
+    session["access_token"] = response_data.get("access_token")
+    session["refresh_token"] = response_data.get("refresh_token")
+
+    # Get user info to store user_id
+    headers = {"Authorization": f"Bearer {session['access_token']}"}
+    user_response = requests.get("https://api.spotify.com/v1/me", headers=headers)
+    if user_response.status_code == 200:
+        user_info = user_response.json()
+        session["user_id"] = user_info["id"]  # Store user_id for later use
+    
+    return redirect(url_for("dashboard"))
+
+# Dashboard route to display user information
+@app.route('/dashboard')
+def dashboard():
+    access_token = session.get("access_token")
+    if not access_token:
+        return redirect(url_for("login"))
+
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    # Retrieve User's Profile Information
+    response_user = requests.get("https://api.spotify.com/v1/me", headers=headers)
+    user_data = {}
+    if response_user.status_code == 200:
+        user_info = response_user.json()
+        user_data = {
+            "display_name": user_info['display_name'],
+            "profile_image": user_info['images'][0]['url'] if user_info['images'] else None,
+            "followers": user_info['followers']['total'],
+            "country": user_info['country']
+        }
+    
+    # Retrieve Recently Played Tracks
+    response_recent = requests.get("https://api.spotify.com/v1/me/player/recently-played", headers=headers)
+    recent_tracks = response_recent.json().get("items", []) if response_recent.status_code == 200 else []
+    recent_track_data = [{
+        "name": item['track']['name'],
+        "artist": item['track']['artists'][0]['name'],
+        "album": item['track']['album']['name'],
+        "cover_url": item['track']['album']['images'][0]['url'],
+        "played_at": "Day: " + datetime.fromisoformat(item['played_at'].replace("Z", "+00:00")).strftime('%Y-%m-%d') +
+                     " Time: " + datetime.fromisoformat(item['played_at'].replace("Z", "+00:00")).strftime('%H:%M:%S')
+    } for item in recent_tracks]
+
+    # Retrieve User's Top Tracks
+    response_top_tracks = requests.get("https://api.spotify.com/v1/me/top/tracks", headers=headers)
+    top_tracks = response_top_tracks.json().get("items", []) if response_top_tracks.status_code == 200 else []
+    top_track_data = [{
+        "name": track['name'],
+        "artist": track['artists'][0]['name'],
+        "album": track['album']['name'],
+        "cover_url": track['album']['images'][0]['url']
+    } for track in top_tracks]
+
+    # Retrieve User's Top Artists
+    response_top_artists = requests.get("https://api.spotify.com/v1/me/top/artists", headers=headers)
+    top_artists = response_top_artists.json().get("items", []) if response_top_artists.status_code == 200 else []
+    top_artist_data = [{
+        "name": artist['name'],
+        "genres": ', '.join(artist['genres']),
+        "followers": artist['followers']['total'],
+        "image_url": artist['images'][0]['url'] if artist['images'] else None
+    } for artist in top_artists]
+
+    # Retrieve User's Saved Tracks
+    response_saved_tracks = requests.get("https://api.spotify.com/v1/me/tracks", headers=headers)
+    saved_tracks = response_saved_tracks.json().get("items", []) if response_saved_tracks.status_code == 200 else []
+    saved_track_data = [{
+        "name": track['track']['name'],
+        "artist": track['track']['artists'][0]['name'],
+        "album": track['track']['album']['name'],
+        "cover_url": track['track']['album']['images'][0]['url']
+    } for track in saved_tracks]
+
+    # Retrieve User's Saved Albums
+    response_saved_albums = requests.get("https://api.spotify.com/v1/me/albums", headers=headers)
+    saved_albums = response_saved_albums.json().get("items", []) if response_saved_albums.status_code == 200 else []
+    saved_album_data = [{
+        "name": album['album']['name'],
+        "artist": album['album']['artists'][0]['name'],
+        "cover_url": album['album']['images'][0]['url']
+    } for album in saved_albums]
+
+    return render_template("dashboard.html", 
+                           user_name=user_data.get("display_name"),
+                           user_profile_image=user_data.get("profile_image"),
+                           user_country=user_data.get("country"),
+                           user_followers=user_data.get("followers"),
+                           recent_tracks=recent_track_data,
+                           top_tracks=top_track_data,
+                           top_artists=top_artist_data,
+                           saved_tracks=saved_track_data,
+                           saved_albums=saved_album_data)
+
+# Route to handle logout
+@app.route('/logout')
+def logout():
+    print("Logging out...")  # Debugging print
+    print("Access token before logout:", session.get("access_token"))  # Check if access token exists
+    session.pop("access_token", None)  # Remove the access token from the session
+    session.pop("user_id", None)  # Remove the user_id from the session
+    print("Access token after logout:", session.get("access_token"))  # Check if it's removed
+    return redirect(url_for("login"))
+
+# Route to create a playlist based on user's preferences
+@app.route('/create_playlist')
+def create_playlist():
+    access_token = session.get("access_token")
+    user_id = session.get("user_id")  # Ensure user_id is fetched from session
+    if not access_token or not user_id:
+        return redirect(url_for("login"))
+    
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    # Create a new playlist for the user
+    playlist_name = "Mood Playlist"
+    playlist_description = "A playlist based on your preferences"
+
+    playlist_url = f"https://api.spotify.com/v1/users/{user_id}/playlists"
+    playlist_data = {
+        "name": playlist_name,
+        "description": playlist_description,
+        "public": False  # Set to False if you want the playlist to be private
+    }
+    
+    response = requests.post(playlist_url, headers=headers, json=playlist_data)
+    if response.status_code != 201:
+        return "Error creating playlist", 500
+
+    playlist_id = response.json()['id']
+    
+    # Retrieve User's Top Tracks and Artists for creating personalized playlist
+    response_top_tracks = requests.get("https://api.spotify.com/v1/me/top/tracks", headers=headers)
+    top_tracks = response_top_tracks.json().get("items", []) if response_top_tracks.status_code == 200 else []
+    
+    response_top_artists = requests.get("https://api.spotify.com/v1/me/top/artists", headers=headers)
+    top_artists = response_top_artists.json().get("items", []) if response_top_artists.status_code == 200 else []
+    
+    track_ids = []
+
+    # Add top tracks to track_ids list
+    for track in top_tracks:
+        track_ids.append(track['id'])
+    
+    # Add top tracks from the user's favorite artists
+    for artist in top_artists:
+        artist_id = artist['id']
+        response_artist_top_tracks = requests.get(f"https://api.spotify.com/v1/artists/{artist_id}/top-tracks?country=US", headers=headers)
+        if response_artist_top_tracks.status_code == 200:
+            artist_top_tracks = response_artist_top_tracks.json().get("tracks", [])
+            for track in artist_top_tracks:
+                track_ids.append(track['id'])
+    
+    # Randomly select tracks from the list to add to the new playlist
+    random.shuffle(track_ids)
+    selected_tracks = track_ids[:30]  # Limit to 30 tracks
+
+    # Add selected tracks to the playlist
+    add_tracks_url = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks"
+    add_tracks_data = {
+        "uris": [f"spotify:track:{track_id}" for track_id in selected_tracks]
+    }
+    
+    add_response = requests.post(add_tracks_url, headers=headers, json=add_tracks_data)
+    if add_response.status_code == 201:
+        return f"Playlist created successfully! Playlist ID: {playlist_id}", 200
+    else:
+        return f"Failed to add tracks to the playlist: {add_response.status_code}", 500
+
+
+@app.route('/generate-mood-playlist', methods=['POST'])
+def generate_mood_playlist():
+    access_token = session.get("access_token")
+    user_id = session.get("user_id")
+    
+    if not access_token or not user_id:
+        return redirect(url_for("login"))
+    
+    # Get mood from the request body (JSON)
+    mood = request.json.get("mood", "happy")  # Default to "happy" if no mood is provided
+    
+    # Map moods to genres (enhanced for better mood mapping)
+    mood_to_genre = {
+        "happy": ["pop", "dance", "electronic"],
+        "sad": ["acoustic", "indie", "blues"],
+        "energetic": ["rock", "metal", "punk"],
+        "relaxed": ["jazz", "classical", "chill"]
+    }
+    
+    # Mood-specific audio feature tuning
+    mood_to_features = {
+        "happy": {"valence": 0.7, "energy": 0.6, "danceability": 0.7},
+        "sad": {"valence": 0.2, "energy": 0.3, "danceability": 0.4},
+        "energetic": {"valence": 0.6, "energy": 0.9, "danceability": 0.8},
+        "relaxed": {"valence": 0.4, "energy": 0.2, "danceability": 0.3}
+    }
+
+    # Fetch mood-based genre(s)
+    genres = mood_to_genre.get(mood, ["pop"])  # Default to pop if mood is not recognized
+    features = mood_to_features.get(mood, mood_to_features["happy"])  # Default to "happy" features
+
+    headers = {"Authorization": f"Bearer {access_token}"}
+    
+    # Create a new playlist for the user
+    playlist_name = f"{mood.capitalize()} Mood Playlist"
+    playlist_description = f"A playlist created for your {mood} mood."
+    playlist_url = f"https://api.spotify.com/v1/users/{user_id}/playlists"
+    playlist_data = {
+        "name": playlist_name,
+        "description": playlist_description,
+        "public": False  # Set to False if you want the playlist to be private
+    }
+
+    playlist_response = requests.post(playlist_url, headers=headers, json=playlist_data)
+    if playlist_response.status_code != 201:
+        logging.error(f"Failed to create playlist. Status code: {playlist_response.status_code}, Response: {playlist_response.text}")
+        return jsonify({"error": f"Error creating playlist: {playlist_response.status_code}"}), 500
+
+    playlist_id = playlist_response.json()['id']
+    
+    track_ids = []
+
+    try:
+        # Get Top Tracks for the user (Personalize with user preferences)
+        response_top_tracks = requests.get("https://api.spotify.com/v1/me/top/tracks", headers=headers)
+        if response_top_tracks.status_code == 200:
+            top_tracks = response_top_tracks.json().get("items", [])
+            for track in top_tracks:
+                track_ids.append(track['id'])
+        else:
+            logging.warning("Failed to retrieve top tracks.")
+
+        # Get Top Artists and their top tracks for more personalization
+        response_top_artists = requests.get("https://api.spotify.com/v1/me/top/artists", headers=headers)
+        if response_top_artists.status_code == 200:
+            top_artists = response_top_artists.json().get("items", [])
+            for artist in top_artists:
+                artist_id = artist['id']
+                response_artist_top_tracks = requests.get(f"https://api.spotify.com/v1/artists/{artist_id}/top-tracks?country=US", headers=headers)
+                if response_artist_top_tracks.status_code == 200:
+                    artist_top_tracks = response_artist_top_tracks.json().get("tracks", [])
+                    for track in artist_top_tracks:
+                        track_ids.append(track['id'])
+                else:
+                    logging.warning(f"Failed to retrieve top tracks for artist: {artist['name']}")
+        else:
+            logging.warning("Failed to retrieve top artists.")
+        
+        # Use Spotify's recommendations API based on genres and mood features
+        rec_url = "https://api.spotify.com/v1/recommendations"
+        params = {
+            "seed_genres": ','.join(genres),
+            "limit": 30,
+            "target_valence": features["valence"],  # Focus on mood positivity
+            "target_energy": features["energy"],  # Focus on energy level
+            "target_danceability": features["danceability"],  # Focus on danceability for more engaging tracks
+        }
+
+        response = requests.get(rec_url, headers=headers, params=params)
+        if response.status_code == 200:
+            tracks = response.json().get("tracks", [])
+            if not tracks:
+                logging.warning("No tracks found in recommendations for this mood.")
+            else:
+                for track in tracks:
+                    track_ids.append(track['id'])
+        else:
+            logging.error(f"Failed to fetch recommendations. Status code: {response.status_code}, Response: {response.text}")
+
+        # If no tracks were collected, log and return an error
+        if not track_ids:
+            return jsonify({"error": "No tracks available for the selected mood."}), 404
+
+        # Randomly select 30 tracks to add to the playlist
+        random.shuffle(track_ids)
+        selected_tracks = track_ids[:30]
+
+        # Add selected tracks to the playlist
+        add_tracks_url = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks"
+        add_tracks_data = {
+            "uris": [f"spotify:track:{track_id}" for track_id in selected_tracks]
+        }
+
+        add_response = requests.post(add_tracks_url, headers=headers, json=add_tracks_data)
+        if add_response.status_code == 201:
+            playlist_url = f"https://open.spotify.com/playlist/{playlist_id}"
+            return jsonify({
+                "message": f"Playlist generated based on your {mood} mood!",
+                "url": playlist_url
+            }), 200
+        else:
+            logging.error(f"Failed to add tracks to playlist. Status code: {add_response.status_code}, Response: {add_response.text}")
+            return jsonify({"error": f"Failed to add tracks to the playlist: {add_response.status_code}"}), 500
+
+    except Exception as e:
+        logging.error(f"Error occurred: {str(e)}")
+        return jsonify({"error": "An unexpected error occurred."}), 500
+    
+
+
+# Load face cascade classifier
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+
+def detect_emotion():
+    """
+    Detect emotion using the webcam feed.
+    Captures a single frame, detects the largest face, and predicts the dominant emotion.
+    Returns the detected emotion or raises an exception if no emotion is detected.
+    """
+    # Start capturing video
+    cap = cv2.VideoCapture(0)
+
+    if not cap.isOpened():
+        raise Exception("Error: Camera could not be opened.")
+
+    print("Camera opened successfully. Displaying live feed...")
+
+    # Start time for delay
+    start_time = time.time()
+
+    captured_frame = None
+    while True:
+        # Read a frame from the live feed
+        ret, frame = cap.read()
+
+        if not ret:
+            raise Exception("Failed to capture frame.")
+
+        # Display the live feed (optional for debugging)
+        cv2.imshow('Live Feed', frame)
+
+        # Check if the delay time has passed (2 seconds in this case)
+        if time.time() - start_time >= 2:
+            captured_frame = frame  # Save the current frame
+            print("Captured a frame for processing.")
+            break
+
+        # Exit if the user presses 'q'
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            raise Exception("User exited the live feed.")
+
+    # Process the captured frame
+    if captured_frame is not None:
+        gray_frame = cv2.cvtColor(captured_frame, cv2.COLOR_BGR2GRAY)
+
+        # Detect faces in the frame
+        faces = face_cascade.detectMultiScale(gray_frame, scaleFactor=1.1, minNeighbors=5, minSize=(100, 100))
+
+        if len(faces) > 0:
+            # Sort faces by size (area) and select the largest one
+            largest_face = max(faces, key=lambda rect: rect[2] * rect[3])  # Sort by width * height
+            x, y, w, h = largest_face
+
+            # Extract the face ROI (Region of Interest)
+            face_roi = captured_frame[y:y + h, x:x + w]
+
+            # Perform emotion analysis on the face ROI
+            try:
+                result = DeepFace.analyze(face_roi, actions=['emotion'], enforce_detection=False)
+                print(f"DeepFace result: {result}")
+
+                # Determine the dominant emotion
+                if isinstance(result, dict) and 'emotion' in result:
+                    emotions = result['emotion']
+                    print(f"Emotions detected: {emotions}")
+                    dominant_emotion = max(emotions, key=emotions.get)  # Find the emotion with the highest score
+                    print(f"Dominant emotion: {dominant_emotion}")
+                else:
+                    raise Exception("Error: Unable to find emotion data in DeepFace result.")
+
+                # Release the capture and close all windows
+                cap.release()
+                cv2.destroyAllWindows()
+
+                return dominant_emotion  # Return the detected emotion
+
+            except Exception as e:
+                print(f"Error during emotion detection: {e}")
+                cap.release()
+                cv2.destroyAllWindows()
+                raise e
+        else:
+            cap.release()
+            cv2.destroyAllWindows()
+            raise Exception("No faces detected in the frame.")
+    
+    else:
+        cap.release()
+        cv2.destroyAllWindows()
+        raise Exception("No frame captured.")
+
+    # Fallback: Release the capture and close all windows
+    cap.release()
+    cv2.destroyAllWindows()
+
+
+from flask import redirect, session, url_for, jsonify
+
+@app.route('/detect-and-generate', methods=['GET'])
+def detect_and_generate_playlist():
+    """
+    Detect user's emotion and create a mood-based Spotify playlist.
+    """
+    try:
+        # Check if the user is authenticated by verifying if access_token exists
+        access_token = session.get("access_token")
+        if not access_token:
+            # Redirect to the Spotify login page if not authenticated
+            redirect_url = url_for('login', _external=True)  # 'login' should be your login route
+            return jsonify({
+                "error": "Spotify login required.",
+                "redirect_url": redirect_url
+            }), 401
+        
+        # Step 1: Detect the user's emotion using the webcam
+        detected_emotion = detect_emotion()
+        print(f"Detected emotion: {detected_emotion}")
+
+        # Step 2: Map the detected emotion to a mood
+        emotion_to_mood = {
+            "happy": "happy",
+            "sad": "sad",
+            "neutral": "relaxed",
+            "angry": "energetic",
+            "surprise": "happy",
+            "fear": "relaxed",
+            "disgust": "relaxed"
+        }
+        mood = emotion_to_mood.get(detected_emotion, "happy")  # Default to "happy" if emotion not in map
+        print(f"Mapped mood: {mood}")
+
+        # Step 3: Make a POST request to generate the playlist based on the mood
+        generate_playlist_url = url_for('generate_mood_playlist', _external=True)
+        response = requests.post(generate_playlist_url, json={"mood": mood}, allow_redirects=False)
+
+        # Step 4: Handle the response from the playlist generation endpoint
+        if response.status_code == 200:
+            try:
+                playlist_data = response.json()  # Parse the JSON response
+                playlist_url = playlist_data.get("url")
+                if not playlist_url:
+                    raise ValueError("Missing 'url' in response data.")
+                print(f"Playlist generated successfully: {playlist_url}")
+                return jsonify({
+                    "message": "Playlist created successfully!",
+                    "playlist_url": playlist_url
+                }), 200
+            except (ValueError, KeyError) as e:
+                print(f"Error parsing response JSON: {e}")
+                return jsonify({
+                    "error": "Invalid response format from playlist generation.",
+                    "details": str(e)
+                }), 500
+
+        elif response.status_code == 302:
+            # Handle redirect (e.g., user not logged in to Spotify)
+            redirect_url = response.headers.get("Location", url_for('login', _external=True))
+            print(f"Redirect detected. Spotify login required: {redirect_url}")
+            return jsonify({
+                "error": "Spotify login required.",
+                "redirect_url": redirect_url
+            }), 401
+
+        else:
+            # Handle unexpected responses
+            print(f"Unexpected response from playlist generation: {response.status_code} - {response.text}")
+            return jsonify({
+                "error": "Failed to generate playlist.",
+                "status_code": response.status_code,
+                "details": response.text
+            }), response.status_code
+
+    except Exception as e:
+        # Log any unexpected errors and return a generic failure response
+        print(f"Error in detect_and_generate_playlist: {e}")
+        return jsonify({
+            "error": "An unexpected error occurred.",
+            "details": str(e)
+        }), 500
+
+
+# Run the app
+if __name__ == '__main__':
+    app.run(debug=True)
+
