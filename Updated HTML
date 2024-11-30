@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Mood Playlist Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- User Information -->
+        <header>
+            <h1>Welcome, {{ user_name }}</h1>
+            <img src="{{ user_profile_image }}" alt="Profile Image" class="profile-image">
+            <p><strong>Followers:</strong> {{ user_followers }}</p>
+            <p><strong>Country:</strong> {{ user_country }}</p>
+        </header>
+
+        <!-- Playlist Generation Section -->
+        <section>
+            <h2>Generate Playlists</h2>
+            
+            <!-- Random Playlist Button -->
+            <form action="/generate-random-playlist" method="POST">
+                <button type="submit">Generate Random Playlist</button>
+            </form>
+            
+            <!-- Preferences-Based Playlist Button -->
+            <form action="/create_playlist" method="GET">
+                <button type="submit">Create Playlist Based on Preferences</button>
+            </form>
+        </section>
+
+        <!-- Mood Playlist Section -->
+        <section>
+            <h3>Generate Mood Playlist</h3>
+            <label for="moodSelector">Choose a mood:</label>
+            <select id="moodSelector">
+                <option value="happy">Happy</option>
+                <option value="sad">Sad</option>
+                <option value="relaxed">Relaxed</option>
+                <option value="energetic">Energetic</option>
+            </select>
+            <button id="generateMoodPlaylist">Generate Mood Playlist</button>
+        </section>
+
+        <!-- Emotion Detection and Playlist Generation Section -->
+        <section>
+            <h3>Emotion Detection and Playlist Generation</h3>
+            <button id="detectEmotion">Detect Emotion and Generate Playlist</button>
+            <p>
+                This feature will detect your current emotion using your webcam and create a Spotify playlist based on the detected emotion.
+            </p>
+        </section>
+
+        <!-- Recently Played Tracks Section -->
+        <section>
+            <h3>Recently Played</h3>
+            <ul>
+                {% for track in recent_tracks %}
+                <li>
+                    <img src="{{ track.cover_url }}" alt="{{ track.name }} album cover" width="50">
+                    <p><strong>{{ track.name }}</strong> by {{ track.artist }}</p>
+                    <p><small>Played on {{ track.played_at }}</small></p>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <!-- Top Tracks Section -->
+        <section>
+            <h3>Your Top Tracks</h3>
+            <ul>
+                {% for track in top_tracks %}
+                <li>
+                    <img src="{{ track.cover_url }}" alt="{{ track.name }} album cover" width="50">
+                    <p><strong>{{ track.name }}</strong> by {{ track.artist }}</p>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <!-- Top Artists Section -->
+        <section>
+            <h3>Your Top Artists</h3>
+            <ul>
+                {% for artist in top_artists %}
+                <li>
+                    <img src="{{ artist.image_url }}" alt="{{ artist.name }}" width="50">
+                    <p><strong>{{ artist.name }}</strong></p>
+                    <p><small>Genres: {{ artist.genres }}</small></p>
+                    <p><small>Followers: {{ artist.followers }}</small></p>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <!-- Saved Tracks Section -->
+        <section>
+            <h3>Your Saved Tracks</h3>
+            <ul>
+                {% for track in saved_tracks %}
+                <li>
+                    <img src="{{ track.cover_url }}" alt="{{ track.name }} album cover" width="50">
+                    <p><strong>{{ track.name }}</strong> by {{ track.artist }}</p>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <!-- Saved Albums Section -->
+        <section>
+            <h3>Your Saved Albums</h3>
+            <ul>
+                {% for album in saved_albums %}
+                <li>
+                    <img src="{{ album.cover_url }}" alt="{{ album.name }} album cover" width="50">
+                    <p><strong>{{ album.name }}</strong> by {{ album.artist }}</p>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <!-- Logout Section -->
+        <section>
+            <form action="/logout" method="GET">
+                <button type="submit">Logout</button>
+            </form>
+        </section>
+    </div>
+
+    <!-- Link to external JavaScript file -->
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+</body>
+</html>
