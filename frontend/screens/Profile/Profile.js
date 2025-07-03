@@ -1,20 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import User from '../../../backend/User'; // Import the User class
+import { useUser } from '../../../context/UserContext'; // Import useUser hook
 import styles from './ProfileStyle';
 
 const Profile = ({ navigation }) => {
+  const { user } = useUser(); // Access user data from context
   const [userProfile, setUserProfile] = useState(null);
 
   useEffect(() => {
-    // Fetch user data from the User instance
-    const fetchUserData = async () => {
-      const userData = await User.getInstance();
-      setUserProfile(userData);
-    };
-    fetchUserData();
-  }, []);
+    // Fetch user data from the context
+    if (user) {
+      setUserProfile(user);
+    }
+  }, [user]); // Only update when user data changes
 
   if (!userProfile) {
     return (
@@ -37,7 +36,10 @@ const Profile = ({ navigation }) => {
       {/* Profile Header */}
       <View style={styles.header}>
         <Text style={styles.headerText}>My Profile</Text>
-        <TouchableOpacity style={styles.editButton}>
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => navigation.navigate('EditProfile')} // Navigate to EditProfile screen
+        >
           <Text style={styles.editText}>Edit</Text>
         </TouchableOpacity>
       </View>
@@ -50,7 +52,6 @@ const Profile = ({ navigation }) => {
         />
         <Text style={styles.userName}>{userProfile.username}</Text>
         <Text style={styles.userDetails}>Email: {userProfile.email}</Text>
-        <Text style={styles.userDetails}>Phone Number: {userProfile.phoneNumber}</Text>
       </View>
 
       {/* Profile Actions */}
@@ -76,6 +77,5 @@ const Profile = ({ navigation }) => {
     </View>
   );
 };
-
 
 export default Profile;
